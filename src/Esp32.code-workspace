@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": "../../Esp32/Esp32"
+		},
+		{
+			"name": "EspCam",
+			"path": ".."
+		}
+	],
+	"settings": {}
+}

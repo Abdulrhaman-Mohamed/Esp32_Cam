@@ -1,12 +1,16 @@
 #include "Camera.h"
 
-#define Second 1000
 
-Camera::Camera( camera_config_t config) {
+int32_t Camera::_Image_Number = 0 ;
+
+Camera::Camera( camera_config_t config ) {
   _config = config;
+  
 }
 
-char * Camera::Camera_online(size_t* length) {
+
+
+byte * Camera::Camera_online(size_t* length) {
 
   camera_fb_t *fb = NULL;
 
@@ -20,7 +24,7 @@ char * Camera::Camera_online(size_t* length) {
   *length = fb->len;
 
 // Allocate memory for image data
-  char * image_data = new char[*length];
+  byte * image_data = new byte[*length];
 
   // Copy image data to buffer
   memcpy(image_data, fb->buf, *length);
@@ -33,13 +37,15 @@ char * Camera::Camera_online(size_t* length) {
 }
 
 
-void Camera::Camera_Offline(short delay_s , short repeat , short planId)
+void Camera::Camera_Offline( short planId)
 {
-  // Initialize the SD card
-  if(!SD_MMC.begin()) {
-    Serial.println("SD card initialization failed!");
+
+
+     if (!SD_MMC.begin()) {
+    Serial.println("Failed to mount SD card");
     return;
   }
+
 
   // Create a directory to store the images
   String image_dir = "/images_"+String(planId);
@@ -48,18 +54,21 @@ void Camera::Camera_Offline(short delay_s , short repeat , short planId)
   }
 
   // Capture and store the images
-  for(int i = 1; i <= repeat; i++) {
-    // Wait for the delay between every capture
-    delay(delay_s * Second );
+
+
+
 
     // Take the picture
     camera_fb_t *fb = esp_camera_fb_get();
 
     // Save the picture to the SD card
-    String filename = image_dir+"/image_" + String(i) + ".jpg";
+    String filename = image_dir+"/image_" + String(_Image_Number)+".txt"   ;
     File file = SD_MMC.open(filename, FILE_WRITE);
     if(file) {
-      file.write(fb->buf, fb->len);
+       for (size_t i = 0; i < fb->len; i++) {
+        file.printf("%02X", fb->buf[i]);
+  }
+      //file.write(fb->buf, fb->len);
       file.close();
     } else {
       Serial.println("Failed to open file for writing");
@@ -67,10 +76,87 @@ void Camera::Camera_Offline(short delay_s , short repeat , short planId)
 
     // Free the memory used by the framebuffer
     esp_camera_fb_return(fb);
+  
+  _Image_Number++;
+
+SD_MMC.end();
+}
+
+
+
+
+
+
+void Camera:: removeAllFilesInFolder( const String folderName ) {
+
+     if (!SD_MMC.begin()) {
+    Serial.println("Failed to mount SD card");
+    return;
+  }
+  
+  String folderPath = String(folderName);
+
+  // Loop through all files in the folder
+  File dir = SD_MMC.open(folderPath);
+  if (!dir || !dir.isDirectory()) {
+    Serial.println("Failed to open directory");
+    return;
   }
 
-  // Unmount the SD card
+  int fileIndex = 0;
+
+  while (true) {
+    File file = dir.openNextFile();
+    if (!file) {
+      Serial.println("No more files");
+      break;
+    }
+
+    if (file.isDirectory()) {
+      file.close();
+      continue;
+    }
+
+    String fileName = file.name();
+
+    // Get the size of the file
+  size_t fileSize = file.size();
+  
+  // Allocate memory for the byte array
+  char* byteArray = new char[fileSize];
+  
+  // Read the file into the byte array
+  file.readBytes(byteArray, fileSize);
+
+    
+
+
+ /*
+
+  // Print the contents of the byte array to serial output
+  Serial.println("Contents of file:");
+  for (size_t i = 0; i < fileSize; i++) {
+    Serial.print(byteArray[i]);
+    Serial.print(" ");
+  }
+  Serial.println();
+  */
+
+     // Delete the file content array
+     delete[] byteArray;
+    
+    SD_MMC.remove(fileName);
+
+    file.close();
+
+    fileIndex++;
+  }
+
+  dir.close();
+
+  // Remove the folder
+  SD_MMC.rmdir(folderPath);
+  Serial.println("Done");
+  _Image_Number=0;
   SD_MMC.end();
-
-
 }

@@ -25,6 +25,15 @@ Camera cam(config);
 #define HREF_GPIO_NUM     23
 #define PCLK_GPIO_NUM     22
 
+#define FLASH_PIN GPIO_NUM_4
+
+
+const int MAX_FILES = 10;
+
+
+
+
+
 
 void setup() {
 
@@ -74,7 +83,20 @@ Serial.begin(115200);
 
 
 
+
+
  
+
+
+
+
+
+   
+  gpio_pad_select_gpio(FLASH_PIN);
+  gpio_set_direction(FLASH_PIN, GPIO_MODE_OUTPUT);
+
+
+cam._Image_Number = 0 ;  
 }
 
 void loop() {
@@ -87,28 +109,44 @@ void loop() {
   case 'O':
   {
     size_t length = 0;
-    //Get Capture 
-    char* image_data = cam.Camera_online(&length);
+    byte* image_data = cam.Camera_online(&length);
+    Serial.println(length);
     if (!image_data) 
     {
       Serial.println("Failed to capture image");
       return;
     }
     // send in socket
-    con.SendBinary(image_data ,length , 1024);
+    //con.SendBinary(image_data ,length , 1024);
     // Delete  an array
+    
     delete[] image_data;
-    delay(5000);
+    delay(300);
     break;
   }
+  
 
 
   // Offline Session
   case 'F':
   {
+
+  gpio_set_level(FLASH_PIN, HIGH);
     //  First Paramter delay between every image in second , Second paramter Reapet and finally paraamter the plan id All get from UART
-    cam.Camera_Offline(2 , 3 , 1);
+    cam.Camera_Offline( 1);
+    Serial.println("OFF");
+
+  
+ 
     break;
+  }
+
+// telemetry
+  case 'S':
+  {
+      // Create arrays to hold the file contents and sizes
+
+    cam.removeAllFilesInFolder("/images_1");
   }
 
   default:
@@ -117,4 +155,3 @@ void loop() {
   }
  
 }
-
