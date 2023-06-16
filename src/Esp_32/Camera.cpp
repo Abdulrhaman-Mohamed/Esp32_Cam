@@ -1,5 +1,11 @@
 #include "Camera.h"
 
+#define BAUD_RATE 115200
+#define TXD_PIN 12
+#define RXD_PIN 13
+
+
+byte *Camera::bufferUART = new byte[5];
 
 int32_t Camera::_Image_Number = 0 ;
 
@@ -37,7 +43,7 @@ byte * Camera::Camera_online(size_t* length) {
 }
 
 
-void Camera::Camera_Offline( short planId)
+void Camera::Camera_Offline(const int planId)
 {
 
 
@@ -87,14 +93,14 @@ SD_MMC.end();
 
 
 
-void Camera:: removeAllFilesInFolder( const String folderName ) {
+void Camera:: removeAllFilesInFolder(const  int planID ) {
 
      if (!SD_MMC.begin()) {
     Serial.println("Failed to mount SD card");
     return;
   }
   
-  String folderPath = String(folderName);
+  String folderPath = "/images_"+String(planID) ;
 
   // Loop through all files in the folder
   File dir = SD_MMC.open(folderPath);
@@ -159,4 +165,18 @@ void Camera:: removeAllFilesInFolder( const String folderName ) {
   Serial.println("Done");
   _Image_Number=0;
   SD_MMC.end();
+}
+
+
+
+
+void Camera::SetupUART()
+{
+    Serial2.begin(BAUD_RATE, SERIAL_8N1, RXD_PIN, TXD_PIN);
+
+}
+
+void Camera::ReadUARTData()
+{
+ Serial2.readBytes(Camera::bufferUART , 4);
 }

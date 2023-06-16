@@ -2,6 +2,13 @@
 #include "../src/Websocket/WebSocket.h"
 
 
+
+
+
+int Seq_ID  ;
+int plan_ID; 
+
+
 camera_config_t config;
 WebSocket con("127.0.0.1");
 Camera cam(config);
@@ -80,9 +87,7 @@ Serial.begin(115200);
     Serial.printf("Camera init failed with error 0x%x", err);
     return;
   }
-
-
-
+  cam.SetupUART();
 
 
  
@@ -100,15 +105,26 @@ cam._Image_Number = 0 ;
 }
 
 void loop() {
+  delay(1000);
+  Serial.println("GG");
   // UART Variable which describe the type of operation if (Online Or Offline)
-  char read = Serial.read();
+  if(Serial2.available()){
   
-  switch (read)
+   cam.ReadUARTData();
+
+  plan_ID = 0;
+  Serial.println();
+  Seq_ID= Camera::bufferUART[0];
+  plan_ID= (plan_ID << 8 )+ Camera::bufferUART[2];
+  plan_ID= (plan_ID << 8 )+ Camera::bufferUART[3]; 
+  Serial.println(plan_ID);
+  switch (Camera::bufferUART[1])
   {
      //Online Session Capture Every 5 Second and send it by socket
-  case 'O':
+  case 1:
   {
     size_t length = 0;
+     gpio_set_level(FLASH_PIN, HIGH);
     byte* image_data = cam.Camera_online(&length);
     Serial.println(length);
     if (!image_data) 
@@ -116,6 +132,7 @@ void loop() {
       Serial.println("Failed to capture image");
       return;
     }
+     gpio_set_level(FLASH_PIN, LOW);
     // send in socket
     //con.SendBinary(image_data ,length , 1024);
     // Delete  an array
@@ -128,12 +145,12 @@ void loop() {
 
 
   // Offline Session
-  case 'F':
+  case 0:
   {
 
   gpio_set_level(FLASH_PIN, HIGH);
     //  First Paramter delay between every image in second , Second paramter Reapet and finally paraamter the plan id All get from UART
-    cam.Camera_Offline( 1);
+    cam.Camera_Offline(plan_ID);
     Serial.println("OFF");
 
   
@@ -142,11 +159,11 @@ void loop() {
   }
 
 // telemetry
-  case 'S':
+  case 2:
   {
       // Create arrays to hold the file contents and sizes
 
-    cam.removeAllFilesInFolder("/images_1");
+    cam.removeAllFilesInFolder(plan_ID);
   }
 
   default:
@@ -154,4 +171,5 @@ void loop() {
    
   }
  
+}
 }
